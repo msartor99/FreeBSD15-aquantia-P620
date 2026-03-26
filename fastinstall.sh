@@ -29,6 +29,12 @@ echo "Configuration du demarrage..."
 # Chargement auto du driver
 if ! grep -q "if_atlantic_load" /boot/loader.conf; then
     echo 'if_atlantic_load="YES"' >> /boot/loader.conf
+    echo 'hw.aq.msix_disable="1"' >> /boot/loader.conf
+    echo 'hw.aq.num_queues="1"' >> /boot/loader.conf
+    echo 'hw.pci.enable_aspm="0"' >> /boot/loader.conf
+    echo 'hw.dmar.enable="0"' >> /boot/loader.conf
+    echo 'dev.aq.0.iflib.override_nrxds="512"' >> /boot/loader.conf
+    echo 'dev.aq.0.iflib.override_ntxds="512"' >> /boot/loader.conf
 fi
 
 # Activation reseau DHCP
