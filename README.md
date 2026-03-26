@@ -14,7 +14,7 @@ NEW at march 11, using Gemini IA, a new script to patch, compile and configure A
 
 . thats all folks
 
-update march 24 : now the if_atlantic.ko patched and an little script to install it available.
+# Update march 24 : now the if_atlantic.ko patched and an little script to install it available.
 
 use fastinstall.sh
 
