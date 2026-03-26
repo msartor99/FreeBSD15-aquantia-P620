@@ -6,7 +6,7 @@
 DRIVER_NAME="if_atlantic.ko"
 MODULE_DIR="/boot/modules"
 
- git clone https://github.com/msartor99/FreeBSD-15 /tmp/fb15_assets
+ git clone https://github.com/msartor99/FreeBSD15-aquantia-P620 /tmp/fb15_assets
  cd /tmp/fb15_assets
 
 if [ "$(id -u)" -ne 0 ]; then 
