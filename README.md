@@ -16,7 +16,7 @@ NEW at march 11, using Gemini IA, a new script to patch, compile and configure A
 
 # Update march 24 : now the if_atlantic.ko patched and an little script to install it available.
 
-use fastinstall.sh
+download and run sh ./fastinstall.sh
 
 fetch https://raw.githubusercontent.com/msartor99/FreeBSD-15/main/fastinstall.sh
 
