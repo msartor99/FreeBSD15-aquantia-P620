@@ -42,5 +42,6 @@ if ! grep -q "ifconfig_aq0" /etc/rc.conf; then
     echo 'ifconfig_aq0="DHCP promisc -rxcsum -txcsum -tso -lro -vlanhwtso -vlanhwcsum"' >> /etc/rc.conf
 fi
 
+ifconfig down && ifconfig up
 echo "Termine ! L'interface aq0 devrait etre active."
 ifconfig aq0
