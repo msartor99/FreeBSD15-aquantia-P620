@@ -33,7 +33,7 @@ fi
 
 # Activation reseau DHCP
 if ! grep -q "ifconfig_aq0" /etc/rc.conf; then
-    echo 'ifconfig_aq0="DHCP"' >> /etc/rc.conf
+    echo 'ifconfig_aq0="DHCP -rxcsum -txcsum -tso -lro -vlanhwtso -vlanhwcsum"' >> /etc/rc.conf
 fi
 
 echo "Termine ! L'interface aq0 devrait etre active."
