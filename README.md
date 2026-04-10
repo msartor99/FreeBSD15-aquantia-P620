@@ -17,6 +17,7 @@ NEW at march 11, using Gemini IA, a new script to patch, compile and configure A
 # Update april 10 : now the if_aq.ko patched and an little script to install it available.
 
 download and run sh ./fastinstall.sh
+fetch https://github.com/msartor99/FreeBSD15-aquantia-P620/raw/refs/heads/main/fastinstall.sh
 
 Enjoy!
 
