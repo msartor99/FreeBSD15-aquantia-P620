@@ -18,8 +18,6 @@ NEW at march 11, using Gemini IA, a new script to patch, compile and configure A
 
 download and run sh ./fastinstall.sh
 
-fetch https://raw.githubusercontent.com/msartor99/FreeBSD-15/main/fastinstall.sh
-
 Enjoy!
 
 
