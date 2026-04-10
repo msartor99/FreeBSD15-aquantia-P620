@@ -18,6 +18,8 @@ NEW at march 11, using Gemini IA, a new script to patch, compile and configure A
 
 download and run sh ./fastinstall.sh
 
+reboot required to force if_aq.ko to load before internal kernel driver
+
 
 fetch https://github.com/msartor99/FreeBSD15-aquantia-P620/raw/refs/heads/main/fastinstall.sh
 
