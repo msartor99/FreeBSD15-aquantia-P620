@@ -6,7 +6,7 @@
 
 my little research on FreeBSD 15
 
-NEW at march 13, using Gemini IA, a new script to patch, compile and configure Aquantia Atlantic AQ107 network card on Lenovo P620 Workstation.
+# Update at April 13, using Gemini IA, a new script to patch and configure Aquantia Atlantic AQ107 network card on Lenovo P620 Workstation.
 
 . little TODO :
 
