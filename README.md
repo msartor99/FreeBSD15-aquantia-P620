@@ -10,7 +10,7 @@ my little research on FreeBSD 15
 
 . little TODO :
 
-. install FreeBSD 15 using USB Wifi network card, download and execute the script install_atlantic.sh
+. install FreeBSD 15 using USB Wifi network card, download and execute the script install_aquantia.sh
 
 . thats all folks
 
