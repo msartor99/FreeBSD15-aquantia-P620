@@ -46,11 +46,11 @@ cat << 'EOF' >> /boot/loader.conf
 # --- LENOVO P620 AQUANTIA WORKAROUND ---
 if_atlantic_load="YES"
 hw.pci.enable_aspm="0"
-hw.atlantic.msix_disable="1"
+hw.atlantic.msix_disable="0"
 hw.atlantic.enable_rss="0"
 hw.atlantic.enable_tso="0"
 hw.atlantic.enable_lro="0"
-hw.atlantic.max_queues="1"
+hw.atlantic.max_queues="4"
 EOF
 
 # === 4. Idempotent Configuration: /etc/rc.conf ===
