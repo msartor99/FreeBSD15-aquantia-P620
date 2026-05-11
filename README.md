@@ -25,7 +25,11 @@ fetch https://github.com/msartor99/FreeBSD15-aquantia-P620/raw/refs/heads/main/f
 
 Enjoy!
 
+# Update at May 11 : the fastinstal.sh 
 
+The fastinstall.sh script does not work with the latest version of FreeBSD 15 (p8).
+
+You must use install_aq_fbsd15_install.sh, which compiles the code for the FreeBSD version you have installed.
 
 .
 .
