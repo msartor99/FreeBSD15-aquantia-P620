@@ -6,10 +6,10 @@
 
 my little research on FreeBSD 15
 
-# Update at May 22, using Gemini IA, a new script to patch and configure Aquantia Atlantic AQ107 network card on Lenovo P620 Workstation.
+# Update at May 27, using Gemini IA, a new script to patch and configure Aquantia Atlantic AQ107 network card on Lenovo P620 Workstation.
 
 # 1. Download script
-fetch https://raw.githubusercontent.com/msartor99/FreeBSD15-aquantia-P620/72ca2f935887eac9d884808ccd808b01c6a7faa0/install_aq_new.sh
+fetch https://raw.githubusercontent.com/msartor99/FreeBSD15-aquantia-P620/72ca2f935887eac9d884808ccd808b01c6a7faa0/install_aquantia.sh
 
 # 2. make the script executable
 chmod +x install_aq_new.sh
