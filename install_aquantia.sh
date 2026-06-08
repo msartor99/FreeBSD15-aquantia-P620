@@ -1,7 +1,7 @@
 #!/bin/sh
 
 echo "==============================================================="
-echo " QUICK DEPLOYMENT - AQUANTIA DRIVER (LENOVO P620) " new version
+echo " QUICK DEPLOYMENT - AQUANTIA DRIVER (LENOVO P620) new version "
 echo "==============================================================="
 
 # === 1. System Version Check ===
