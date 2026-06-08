@@ -8,7 +8,7 @@ my little research on FreeBSD 15
 
 # update a june 8 new script build_aquantia.sh, improvement in release and brach issue
 
-fetch https://raw.githubusercontent.com/msartor99/FreeBSD15-aquantia-P620/72ca2f935887eac9d884808ccd808b01c6a7faa0/build_aquantia.sh
+fetch https://github.com/msartor99/FreeBSD15-aquantia-P620/blob/ed863466a9fa2182ffd25749b2c3766ec9403249/build_aquantia.sh
 
 chmod +x build_aquantia.sh
 
