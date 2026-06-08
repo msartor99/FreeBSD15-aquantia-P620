@@ -6,6 +6,13 @@
 
 my little research on FreeBSD 15
 
+# update a june 9, new script build_aquantia.sh, improvement in release and brach issue
+
+fetch https://raw.githubusercontent.com/msartor99/FreeBSD15-aquantia-P620/72ca2f935887eac9d884808ccd808b01c6a7faa0/build_aquantia.sh
+chmod +x build_aquantia.sh
+sh build_aquantia.sh
+
+
 # Update at May 27, using Gemini IA, a new script to patch and configure Aquantia Atlantic AQ107 network card on Lenovo P620 Workstation.
 
 # 1. Download script
