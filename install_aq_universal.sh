@@ -2,7 +2,7 @@
 # ==============================================================================
 # IDEMPOTENT INSTALLATION AND CONFIGURATION SCRIPT FOR AQUANTIA/MARVELL 10GbE
 # Target: Universal Desktop Deployment (FreeBSD 14.x & 15.x)
-# Version: 6.0 (Unified Package Deployment for 15.x & Strict PCIe Queue Limits)
+# Version: 8.0 (IfAPI Patching for FreeBSD 15.x Out-of-Tree compilation)
 # File: install_aq_universal.sh
 # ==============================================================================
 
@@ -42,16 +42,20 @@ if [ -f /boot/loader.conf ]; then
     sed -i '' '/hw.dmar.enable/d' /boot/loader.conf
     sed -i '' '/hw.aq/d' /boot/loader.conf
     sed -i '' '/dev.aq/d' /boot/loader.conf
+    sed -i '' '/hw.atlantic/d' /boot/loader.conf
+    sed -i '' '/dev.atlantic/d' /boot/loader.conf
 fi
 
 if [ -f /etc/rc.conf ]; then
     echo " [+] Cleaning Aquantia network interface from /etc/rc.conf..."
     sed -i '' '/ifconfig_aq0/d' /etc/rc.conf
+    sed -i '' '/ifconfig_atlantic0/d' /etc/rc.conf
 fi
 
 if [ -f /etc/sysctl.conf ]; then
     echo " [+] Cleaning Aquantia entries from /etc/sysctl.conf..."
     sed -i '' '/dev.aq/d' /etc/sysctl.conf
+    sed -i '' '/dev.atlantic/d' /etc/sysctl.conf
 fi
 
 echo " [✓] System configurations reset."
@@ -67,62 +71,60 @@ add_line_if_missing() {
 }
 
 # ------------------------------------------------------------------------------
-# 1. DRIVER DEPLOYMENT (FreeBSD 14 vs 15)
+# 1. DRIVER DEPLOYMENT
 # ------------------------------------------------------------------------------
-if [ "$MAJOR_VERSION" -eq 15 ]; then
-    echo "=== [1/5] Deploying Kmod Package for FreeBSD 15.x ==="
-    echo " ⚙️ Using official FreeBSD Kmod package repository."
-    
-    # Force installation via pkg to get the official compiled binary
-    env IGNORE_OSVERSION=yes pkg install -y aquantia-atlantic-kmod
-    
-    DRIVER_NAME="if_atlantic"
-    INTERFACE_NAME="aq0"
-    
-else
-    echo "=== [1/5] Fetching Legacy Driver Source Code for FreeBSD 14.x ==="
-    echo " ⚙️ Using external GitHub repository (if_atlantic)."
-    
-    pkg install -y git
-    cd /root || exit 1
-    [ ! -d "$WORKDIR" ] && git clone https://github.com/Aquantia/aqtion-freebsd.git "$WORKDIR"
-    cd "$WORKDIR" || exit 1
-    git checkout . 
-    make clean
+echo "=== [1/5] Fetching Out-of-Tree Driver Source Code ==="
+pkg install -y git
 
-    echo "=== [2/5] Applying FreeBSD 14 Patches ==="
-    for f in *.[ch]; do
-        grep -q "#include <unistd.h>" "$f" && sed -i '' 's|^#include <unistd.h>|// #include <unistd.h>|g' "$f"
-    done
-    sed -i '' '/static devclass_t aq_devclass;/d' aq_main.c
-    sed -i '' 's/DRIVER_MODULE(atlantic, pci, aq_driver, aq_devclass, 0, 0);/DRIVER_MODULE(atlantic, pci, aq_driver, 0, 0);/g' aq_main.c
-    for f in aq_main.c aq_media.c aq_ring.c; do
-        grep -q "#include <net/if_var.h>" "$f" || sed -i '' '/#include <net\/if.h>/a\
+cd /root || exit 1
+git clone https://github.com/Aquantia/aqtion-freebsd.git "$WORKDIR"
+cd "$WORKDIR" || exit 1
+make clean
+
+echo "=== [2/5] Applying Code Compatibility Patches ==="
+
+# 1. Fix the unistd.h / systm.h pause() conflict
+echo " [+] Commenting out conflicting <unistd.h> includes..."
+for f in *.[ch]; do
+    grep -q "#include <unistd.h>" "$f" && sed -i '' 's|^#include <unistd.h>|// #include <unistd.h>|g' "$f"
+done
+
+# 2. Fix DRIVER_MODULE macro arguments (removed devclass argument in modern FreeBSD)
+echo " [+] Stripping legacy devclass bindings..."
+sed -i '' '/static devclass_t aq_devclass;/d' aq_main.c
+sed -i '' 's/DRIVER_MODULE(atlantic, pci, aq_driver, aq_devclass, 0, 0);/DRIVER_MODULE(atlantic, pci, aq_driver, 0, 0);/g' aq_main.c
+
+# 3. FreeBSD 15 IfAPI Transition (Opaque ifnet structure)
+echo " [+] Migrating structures to IfAPI accessors..."
+for f in aq_main.c aq_media.c aq_ring.c; do
+    grep -q "#include <net/if_var.h>" "$f" || sed -i '' '/#include <net\/if.h>/a\
 #include <net/if_var.h>' "$f"
-        sed -i '' 's/ifp->if_softc/if_getsoftc(ifp)/g' "$f"
-        sed -i '' 's/ifp->if_flags/if_getflags(ifp)/g' "$f"
-        sed -i '' 's/ifp->if_drv_flags/if_getdrvflags(ifp)/g' "$f"
-        sed -i '' 's/ifp->if_capenable/if_getcapenable(ifp)/g' "$f"
-        sed -i '' 's/ifp->if_baudrate/if_getbaudrate(ifp)/g' "$f"
-        sed -i '' 's/ifp->if_mtu/if_getmtu(ifp)/g' "$f"
-    done
-    if ! grep -qi "0xd107" aq_main.c; then
-        sed -i '' 's/AQ_DEVICE(0x07b0)/AQ_DEVICE(0x07b0),\
-\tAQ_DEVICE(0x1d6a, 0xd107)/g' aq_main.c
-    fi
+    sed -i '' 's/ifp->if_softc/if_getsoftc(ifp)/g' "$f"
+    sed -i '' 's/ifp->if_flags/if_getflags(ifp)/g' "$f"
+    sed -i '' 's/ifp->if_drv_flags/if_getdrvflags(ifp)/g' "$f"
+    sed -i '' 's/ifp->if_capenable/if_getcapenable(ifp)/g' "$f"
+    sed -i '' 's/ifp->if_baudrate/if_getbaudrate(ifp)/g' "$f"
+    sed -i '' 's/ifp->if_mtu/if_getmtu(ifp)/g' "$f"
+done
 
-    echo "=== [3/5] Building Kernel Module ==="
-    make -j$(sysctl -n hw.ncpu)
-    if [ -f "if_atlantic.ko" ]; then
-        mkdir -p "$MODULE_DIR"
-        cp if_atlantic.ko "$MODULE_DIR/"
-    else
-        echo " ❌ Compilation FAILED."
-        exit 1
-    fi
-    DRIVER_NAME="if_atlantic"
-    INTERFACE_NAME="aq0"
+# 4. Inject specific Lenovo P620 Hardware ID (0xd107)
+echo " [+] Injecting Aquantia AQC107 Device ID (0xd107)..."
+if ! grep -qi "0xd107" aq_main.c; then
+    sed -i '' 's/AQ_DEVICE(0x07b0)/AQ_DEVICE(0x07b0),\
+\tAQ_DEVICE(0x1d6a, 0xd107)/g' aq_main.c
 fi
+
+echo "=== [3/5] Building Kernel Module ==="
+make -j$(sysctl -n hw.ncpu)
+if [ -f "if_atlantic.ko" ]; then
+    mkdir -p "$MODULE_DIR"
+    cp if_atlantic.ko "$MODULE_DIR/"
+else
+    echo " ❌ Compilation FAILED."
+    exit 1
+fi
+DRIVER_NAME="if_atlantic"
+INTERFACE_NAME="aq0"
 
 # ------------------------------------------------------------------------------
 # 4. PERSISTENCE AND BUG WORKAROUNDS
