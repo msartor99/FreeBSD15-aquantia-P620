@@ -2,7 +2,7 @@
 # ==============================================================================
 # IDEMPOTENT INSTALLATION AND CONFIGURATION SCRIPT FOR AQUANTIA/MARVELL 10GbE
 # Target: Universal Desktop Deployment (FreeBSD 14.x & 15.x)
-# Version: 8.0 (IfAPI Patching for FreeBSD 15.x Out-of-Tree compilation)
+# Version: 9.0 (Restored Kernel Source Fetching for Out-of-Tree Compilation)
 # File: install_aq_universal.sh
 # ==============================================================================
 
@@ -14,23 +14,27 @@ fi
 
 WORKDIR="/root/aqtion-freebsd"
 MODULE_DIR="/boot/modules"
+SRC_TARBALL="/root/src.txz"
 
 # Extract OS properties securely
 SYS_VERSION=$(uname -r)
+BASE_RELEASE=$(uname -r | cut -d'-' -f1-2) # Strip patch level (e.g., 14.4-RELEASE-p6 -> 14.4-RELEASE)
 MAJOR_VERSION=$(uname -K | cut -c 1-2)
 
 echo "=========================================================================="
 echo "🌐 Starting Aquantia/Marvell 10GbE Driver Installation & Debug"
 echo "   Detected OS Version: FreeBSD ${SYS_VERSION}"
+echo "   Base Release Target: ${BASE_RELEASE}"
 echo "=========================================================================="
 
 # ------------------------------------------------------------------------------
 # 0. ABSOLUTE PURGE OF PREVIOUS CONFIGURATIONS AND FILES
 # ------------------------------------------------------------------------------
-echo "=== [0/5] Purging all previous Aquantia drivers, builds and configurations ==="
+echo "=== [0/6] Purging all previous Aquantia drivers, builds and configurations ==="
 
 rm -rf "$WORKDIR"
 rm -rf "/tmp/AQtion"
+rm -f "$SRC_TARBALL"
 rm -f "${MODULE_DIR}/if_atlantic.ko"
 rm -f "${MODULE_DIR}/if_aq.ko"
 
@@ -71,17 +75,53 @@ add_line_if_missing() {
 }
 
 # ------------------------------------------------------------------------------
-# 1. DRIVER DEPLOYMENT
+# 1. DEPENDENCIES
 # ------------------------------------------------------------------------------
-echo "=== [1/5] Fetching Out-of-Tree Driver Source Code ==="
+echo "=== [1/6] Installing dependencies (git) ==="
 pkg install -y git
+
+# ------------------------------------------------------------------------------
+# 2. SOURCE TREE PREPARATION (REQUIRED FOR KMOD BUILD)
+# ------------------------------------------------------------------------------
+echo "=== [2/6] Preparing Kernel Source Tree for ${BASE_RELEASE} ==="
+
+if [ -d "/usr/src/sys" ]; then
+    echo " [!] Source tree found in /usr/src/sys."
+else
+    echo " [!] Source tree missing. Attempting to fetch..."
+    if echo "$SYS_VERSION" | grep -q "RELEASE"; then
+        echo " [+] Downloading kernel sources for RELEASE ${BASE_RELEASE}..."
+        fetch -o "$SRC_TARBALL" "https://download.freebsd.org/releases/amd64/${BASE_RELEASE}/src.txz"
+        if [ -f "$SRC_TARBALL" ]; then
+            echo " [+] Extracting sources to /usr/src..."
+            tar -C / -xf "$SRC_TARBALL"
+            rm -f "$SRC_TARBALL"
+        else
+            echo " ❌ FAILED to download sources from official mirrors."
+            exit 1
+        fi
+    else
+        echo " [+] Non-RELEASE kernel detected. Using git to fetch sources..."
+        rm -rf /usr/src/*
+        git clone --depth 1 -b main https://git.freebsd.org/src.git /usr/src
+        if [ $? -ne 0 ]; then
+             echo " ❌ FAILED to clone kernel sources via git."
+             exit 1
+        fi
+    fi
+fi
+
+# ------------------------------------------------------------------------------
+# 3. DRIVER DEPLOYMENT
+# ------------------------------------------------------------------------------
+echo "=== [3/6] Fetching Out-of-Tree Driver Source Code ==="
 
 cd /root || exit 1
 git clone https://github.com/Aquantia/aqtion-freebsd.git "$WORKDIR"
 cd "$WORKDIR" || exit 1
 make clean
 
-echo "=== [2/5] Applying Code Compatibility Patches ==="
+echo "=== [4/6] Applying Code Compatibility Patches ==="
 
 # 1. Fix the unistd.h / systm.h pause() conflict
 echo " [+] Commenting out conflicting <unistd.h> includes..."
@@ -114,7 +154,7 @@ if ! grep -qi "0xd107" aq_main.c; then
 \tAQ_DEVICE(0x1d6a, 0xd107)/g' aq_main.c
 fi
 
-echo "=== [3/5] Building Kernel Module ==="
+echo "=== [5/6] Building Kernel Module ==="
 make -j$(sysctl -n hw.ncpu)
 if [ -f "if_atlantic.ko" ]; then
     mkdir -p "$MODULE_DIR"
@@ -129,7 +169,7 @@ INTERFACE_NAME="aq0"
 # ------------------------------------------------------------------------------
 # 4. PERSISTENCE AND BUG WORKAROUNDS
 # ------------------------------------------------------------------------------
-echo "=== [4/5] Configuring Persistence & Bug Workarounds ==="
+echo "=== [6/6] Configuring Persistence & Bug Workarounds ==="
 
 add_line_if_missing "${DRIVER_NAME}_load=\"YES\"" /boot/loader.conf
 echo " [+] Added ${DRIVER_NAME} to /boot/loader.conf"
@@ -144,11 +184,6 @@ add_line_if_missing 'dev.aq.0.iflib.override_ntxqs="8"' /boot/loader.conf
 add_line_if_missing 'dev.aq.0.iflib.override_nrxds="1024"' /boot/loader.conf
 add_line_if_missing 'dev.aq.0.iflib.override_ntxds="1024"' /boot/loader.conf
 echo " [+] Restricted driver MSI-X vectors and ring queues to a maximum of 8."
-
-# ------------------------------------------------------------------------------
-# 5. HARDWARE OFFLOAD WORKAROUND
-# ------------------------------------------------------------------------------
-echo "=== [5/5] Disabling Hardware Offloads in rc.conf ==="
 
 # Force hardware features off directly in sysctl to prevent mid-flight firmware panics
 add_line_if_missing 'dev.aq.0.eee_enable="0"' /etc/sysctl.conf
