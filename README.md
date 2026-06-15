@@ -6,6 +6,15 @@
 
 my little research on FreeBSD 15
 
+# update at june 15. new script install_aq_universal.sh for Lenovo Thinkstation P620, improvement in release and branch issue
+
+fetch https://github.com/msartor99/FreeBSD15-aquantia-P620/blob/ed863466a9fa2182ffd25749b2c3766ec9403249/install_aq_universal.sh
+
+chmod +x install_aq_universal.sh
+
+sh install_aq_universal.sh
+
+
 # update at june 8. new script build_aquantia.sh for Lenovo Thinkstation P620, improvement in release and branch issue
 
 fetch https://github.com/msartor99/FreeBSD15-aquantia-P620/blob/ed863466a9fa2182ffd25749b2c3766ec9403249/build_aquantia.sh
