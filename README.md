@@ -14,6 +14,15 @@ chmod +x install_aq_universal.sh
 
 sh install_aq_universal.sh
 
+If you want to save yourself the trouble of compiling, here's a script that downloads the correct driver from my github and installs it.
+
+fetch https://github.com/msartor99/FreeBSD15-aquantia-P620/blob/ed863466a9fa2182ffd25749b2c3766ec9403249/aq_fastinstall.sh
+
+chmod +x aq_fastinstall.sh
+
+sh aq_fastinstall.sh
+
+
 
 # update at june 8. new script build_aquantia.sh for Lenovo Thinkstation P620, improvement in release and branch issue
 
