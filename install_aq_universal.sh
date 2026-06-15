@@ -1,0 +1,166 @@
+#!/bin/sh
+# ==============================================================================
+# IDEMPOTENT INSTALLATION AND CONFIGURATION SCRIPT FOR AQUANTIA/MARVELL 10GbE
+# Target: Universal Desktop Deployment (FreeBSD 14.x & 15.x)
+# Version: 6.0 (Unified Package Deployment for 15.x & Strict PCIe Queue Limits)
+# File: install_aq_universal.sh
+# ==============================================================================
+
+# Check for root privileges
+if [ "$(id -u)" -ne 0 ]; then
+    echo "🚨 ERROR: This script must be run as root." 1>&2
+    exit 1
+fi
+
+WORKDIR="/root/aqtion-freebsd"
+MODULE_DIR="/boot/modules"
+
+# Extract OS properties securely
+SYS_VERSION=$(uname -r)
+MAJOR_VERSION=$(uname -K | cut -c 1-2)
+
+echo "=========================================================================="
+echo "🌐 Starting Aquantia/Marvell 10GbE Driver Installation & Debug"
+echo "   Detected OS Version: FreeBSD ${SYS_VERSION}"
+echo "=========================================================================="
+
+# ------------------------------------------------------------------------------
+# 0. ABSOLUTE PURGE OF PREVIOUS CONFIGURATIONS AND FILES
+# ------------------------------------------------------------------------------
+echo "=== [0/5] Purging all previous Aquantia drivers, builds and configurations ==="
+
+rm -rf "$WORKDIR"
+rm -rf "/tmp/AQtion"
+rm -f "${MODULE_DIR}/if_atlantic.ko"
+rm -f "${MODULE_DIR}/if_aq.ko"
+
+if [ -f /boot/loader.conf ]; then
+    echo " [+] Cleaning Aquantia entries from /boot/loader.conf..."
+    sed -i '' '/if_atlantic_load/d' /boot/loader.conf
+    sed -i '' '/if_aq_load/d' /boot/loader.conf
+    sed -i '' '/hw.pci.enable_aspm/d' /boot/loader.conf
+    sed -i '' '/hw.dmar.enable/d' /boot/loader.conf
+    sed -i '' '/hw.aq/d' /boot/loader.conf
+    sed -i '' '/dev.aq/d' /boot/loader.conf
+fi
+
+if [ -f /etc/rc.conf ]; then
+    echo " [+] Cleaning Aquantia network interface from /etc/rc.conf..."
+    sed -i '' '/ifconfig_aq0/d' /etc/rc.conf
+fi
+
+if [ -f /etc/sysctl.conf ]; then
+    echo " [+] Cleaning Aquantia entries from /etc/sysctl.conf..."
+    sed -i '' '/dev.aq/d' /etc/sysctl.conf
+fi
+
+echo " [✓] System configurations reset."
+
+# Helper function to append a line cleanly only if it doesn't exist yet
+add_line_if_missing() {
+    LINE="$1"
+    FILE="$2"
+    if [ ! -f "$FILE" ]; then
+        touch "$FILE"
+    fi
+    grep -qF -- "$LINE" "$FILE" || echo "$LINE" >> "$FILE"
+}
+
+# ------------------------------------------------------------------------------
+# 1. DRIVER DEPLOYMENT (FreeBSD 14 vs 15)
+# ------------------------------------------------------------------------------
+if [ "$MAJOR_VERSION" -eq 15 ]; then
+    echo "=== [1/5] Deploying Kmod Package for FreeBSD 15.x ==="
+    echo " ⚙️ Using official FreeBSD Kmod package repository."
+    
+    # Force installation via pkg to get the official compiled binary
+    env IGNORE_OSVERSION=yes pkg install -y aquantia-atlantic-kmod
+    
+    DRIVER_NAME="if_atlantic"
+    INTERFACE_NAME="aq0"
+    
+else
+    echo "=== [1/5] Fetching Legacy Driver Source Code for FreeBSD 14.x ==="
+    echo " ⚙️ Using external GitHub repository (if_atlantic)."
+    
+    pkg install -y git
+    cd /root || exit 1
+    [ ! -d "$WORKDIR" ] && git clone https://github.com/Aquantia/aqtion-freebsd.git "$WORKDIR"
+    cd "$WORKDIR" || exit 1
+    git checkout . 
+    make clean
+
+    echo "=== [2/5] Applying FreeBSD 14 Patches ==="
+    for f in *.[ch]; do
+        grep -q "#include <unistd.h>" "$f" && sed -i '' 's|^#include <unistd.h>|// #include <unistd.h>|g' "$f"
+    done
+    sed -i '' '/static devclass_t aq_devclass;/d' aq_main.c
+    sed -i '' 's/DRIVER_MODULE(atlantic, pci, aq_driver, aq_devclass, 0, 0);/DRIVER_MODULE(atlantic, pci, aq_driver, 0, 0);/g' aq_main.c
+    for f in aq_main.c aq_media.c aq_ring.c; do
+        grep -q "#include <net/if_var.h>" "$f" || sed -i '' '/#include <net\/if.h>/a\
+#include <net/if_var.h>' "$f"
+        sed -i '' 's/ifp->if_softc/if_getsoftc(ifp)/g' "$f"
+        sed -i '' 's/ifp->if_flags/if_getflags(ifp)/g' "$f"
+        sed -i '' 's/ifp->if_drv_flags/if_getdrvflags(ifp)/g' "$f"
+        sed -i '' 's/ifp->if_capenable/if_getcapenable(ifp)/g' "$f"
+        sed -i '' 's/ifp->if_baudrate/if_getbaudrate(ifp)/g' "$f"
+        sed -i '' 's/ifp->if_mtu/if_getmtu(ifp)/g' "$f"
+    done
+    if ! grep -qi "0xd107" aq_main.c; then
+        sed -i '' 's/AQ_DEVICE(0x07b0)/AQ_DEVICE(0x07b0),\
+\tAQ_DEVICE(0x1d6a, 0xd107)/g' aq_main.c
+    fi
+
+    echo "=== [3/5] Building Kernel Module ==="
+    make -j$(sysctl -n hw.ncpu)
+    if [ -f "if_atlantic.ko" ]; then
+        mkdir -p "$MODULE_DIR"
+        cp if_atlantic.ko "$MODULE_DIR/"
+    else
+        echo " ❌ Compilation FAILED."
+        exit 1
+    fi
+    DRIVER_NAME="if_atlantic"
+    INTERFACE_NAME="aq0"
+fi
+
+# ------------------------------------------------------------------------------
+# 4. PERSISTENCE AND BUG WORKAROUNDS
+# ------------------------------------------------------------------------------
+echo "=== [4/5] Configuring Persistence & Bug Workarounds ==="
+
+add_line_if_missing "${DRIVER_NAME}_load=\"YES\"" /boot/loader.conf
+echo " [+] Added ${DRIVER_NAME} to /boot/loader.conf"
+
+add_line_if_missing 'hw.pci.enable_aspm="0"' /boot/loader.conf
+add_line_if_missing 'hw.dmar.enable="0"' /boot/loader.conf
+
+# CRITICAL FIX: Limit to exactly 8 queues to avoid PCIe lane starvation on Threadripper.
+add_line_if_missing 'hw.aq.num_queues="8"' /boot/loader.conf
+add_line_if_missing 'dev.aq.0.iflib.override_nrxqs="8"' /boot/loader.conf
+add_line_if_missing 'dev.aq.0.iflib.override_ntxqs="8"' /boot/loader.conf
+add_line_if_missing 'dev.aq.0.iflib.override_nrxds="1024"' /boot/loader.conf
+add_line_if_missing 'dev.aq.0.iflib.override_ntxds="1024"' /boot/loader.conf
+echo " [+] Restricted driver MSI-X vectors and ring queues to a maximum of 8."
+
+# ------------------------------------------------------------------------------
+# 5. HARDWARE OFFLOAD WORKAROUND
+# ------------------------------------------------------------------------------
+echo "=== [5/5] Disabling Hardware Offloads in rc.conf ==="
+
+# Force hardware features off directly in sysctl to prevent mid-flight firmware panics
+add_line_if_missing 'dev.aq.0.eee_enable="0"' /etc/sysctl.conf
+add_line_if_missing 'dev.aq.0.fc_rx="0"' /etc/sysctl.conf
+add_line_if_missing 'dev.aq.0.fc_tx="0"' /etc/sysctl.conf
+
+if ! grep -q "ifconfig_${INTERFACE_NAME}" /etc/rc.conf; then
+    echo "ifconfig_${INTERFACE_NAME}=\"DHCP -tso -lro -txcsum -rxcsum -vlanhwtso\"" >> /etc/rc.conf
+    echo " [+] Added ifconfig_${INTERFACE_NAME} with hardware offload workarounds."
+else
+    sed -i '' "s/ifconfig_${INTERFACE_NAME}=\"DHCP\"/ifconfig_${INTERFACE_NAME}=\"DHCP -tso -lro -txcsum -rxcsum -vlanhwtso\"/g" /etc/rc.conf
+fi
+
+echo "-------------------------------------------------------"
+echo " ✅ INSTALLATION COMPLETE!"
+echo " PLEASE REBOOT NOW."
+echo "-------------------------------------------------------"
