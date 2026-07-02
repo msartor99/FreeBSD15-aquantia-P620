@@ -10,7 +10,7 @@ my little research on FreeBSD 15
 
 After the update of Freebsd 15.1 and the patches of freebsd-update, here is the installation script for the Aquantia 10Gb card, for FreeBSD 15.1 and previous versions.
 
-fetch https://raw.githubusercontent.com/msartor99/FreeBSD15-aquantia-P620/refs/heads/main/install_aq_universal-9.1.sh
+fetch https://raw.githubusercontent.com/msartor99/FreeBSD15-aquantia-P620/refs/heads/main/install_aq_universal-9.6.sh
 
 
 # update at june 15. new script install_aq_universal.sh for Lenovo Thinkstation P620, improvement in release and branch issue
