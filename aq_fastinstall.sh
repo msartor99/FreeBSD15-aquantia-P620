@@ -3,6 +3,7 @@
 # IDEMPOTENT FAST INSTALLATION SCRIPT FOR AQUANTIA/MARVELL 10GbE
 # Target: Universal Desktop Deployment (FreeBSD 14.x & 15.x)
 # Mode: Pre-compiled binary injection (No compilation required)
+# Version: 9.2 (Sub-version precise routing)
 # File: aq_fastinstall.sh
 # ==============================================================================
 
@@ -14,13 +15,15 @@ fi
 
 MODULE_DIR="/boot/modules"
 SYS_VERSION=$(uname -r)
-MAJOR_VERSION=$(uname -K | cut -c 1-2)
+# Extract precise version (e.g., "15.1" or "14.2")
+EXACT_VERSION=$(uname -r | cut -d'-' -f1)
 DRIVER_NAME="if_atlantic"
 INTERFACE_NAME="aq0"
 
 echo "=========================================================================="
 echo "⚡ Starting FAST Aquantia/Marvell 10GbE Driver Installation"
 echo "   Detected OS Version: FreeBSD ${SYS_VERSION}"
+echo "   Detected Target: ${EXACT_VERSION}"
 echo "=========================================================================="
 
 # ------------------------------------------------------------------------------
@@ -69,28 +72,34 @@ add_line_if_missing() {
 }
 
 # ------------------------------------------------------------------------------
-# 1. DOWNLOAD PRE-COMPILED KERNEL MODULE
+# 1. DOWNLOAD PRE-COMPILED KERNEL MODULE BASED ON EXACT SUB-VERSION
 # ------------------------------------------------------------------------------
 echo "=== [1/3] Downloading Pre-compiled Kernel Module ==="
 
-if [ "$MAJOR_VERSION" -eq 15 ]; then
-    echo " ⚙️ FreeBSD 15.x architecture detected."
-    # Use RAW Github URL to fetch the binary file, not the HTML wrapper
-    URL="https://raw.githubusercontent.com/msartor99/FreeBSD15-aquantia-P620/cac5ac6ac55c4c08dce89b8a59a6204267c7d5f9/FB15_if_atlantic.ko"
-elif [ "$MAJOR_VERSION" -eq 14 ]; then
-    echo " ⚙️ FreeBSD 14.x architecture detected."
-    # Use RAW Github URL to fetch the binary file, not the HTML wrapper
-    URL="https://raw.githubusercontent.com/msartor99/FreeBSD15-aquantia-P620/cac5ac6ac55c4c08dce89b8a59a6204267c7d5f9/FB14_if_atlantic.ko"
-else
-    echo " ❌ ERROR: Unsupported FreeBSD major version: $MAJOR_VERSION"
-    exit 1
-fi
+case "$EXACT_VERSION" in
+    15.1)
+        echo " ⚙️ FreeBSD 15.1 architecture detected."
+        URL="https://raw.githubusercontent.com/msartor99/FreeBSD15-aquantia-P620/main/FB15_1_if_atlantic.ko"
+        ;;
+    15.0)
+        echo " ⚙️ FreeBSD 15.0 architecture detected."
+        URL="https://raw.githubusercontent.com/msartor99/FreeBSD15-aquantia-P620/main/FB15_0_if_atlantic.ko"
+        ;;
+    14.1|14.2)
+        echo " ⚙️ FreeBSD 14.x architecture detected."
+        URL="https://raw.githubusercontent.com/msartor99/FreeBSD15-aquantia-P620/main/FB14_if_atlantic.ko"
+        ;;
+    *)
+        echo " ❌ ERROR: Unsupported precise FreeBSD version: $EXACT_VERSION"
+        exit 1
+        ;;
+esac
 
 echo " [+] Fetching binary module from GitHub..."
 fetch -o "/tmp/if_atlantic.ko" "$URL"
 
 if [ ! -f "/tmp/if_atlantic.ko" ]; then
-    echo " ❌ ERROR: Failed to download the kernel module."
+    echo " ❌ ERROR: Failed to download the kernel module from ${URL}."
     exit 1
 fi
 
@@ -101,7 +110,6 @@ echo "=== [2/3] Installing Kernel Module ==="
 
 mkdir -p "$MODULE_DIR"
 mv "/tmp/if_atlantic.ko" "${MODULE_DIR}/if_atlantic.ko"
-# Ensure the module has the correct executable permissions for the kernel linker
 chmod 555 "${MODULE_DIR}/if_atlantic.ko"
 
 echo " [✓] Module successfully installed to ${MODULE_DIR}/if_atlantic.ko"
