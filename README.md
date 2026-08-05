@@ -6,6 +6,22 @@
 
 my little research on FreeBSD 15
 
+
+# update at august 5
+
+FreeBSD 15.1 has a new release, 15.1-P2; here is the corrected script that checks the Px version.
+
+
+Download the new file and run it.
+
+fetch https://raw.githubusercontent.com/msartor99/FreeBSD15-aquantia-P620/refs/heads/main/install_aq_universal-9.6.sh
+
+chmod +x install_aq_universal-9.6.sh
+
+./install_aq_universal-9.6.sh
+
+
+
 # update at july 2
 
 After the update of Freebsd 15.1 and the patches of freebsd-update, here is the installation script for the Aquantia 10Gb card, for FreeBSD 15.1 and previous versions.
