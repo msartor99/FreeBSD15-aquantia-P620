@@ -6,6 +6,17 @@
 
 my little research on FreeBSD 15
 
+# update at august 31
+
+change queue from "1" to "4"
+
+fetch https://raw.githubusercontent.com/msartor99/FreeBSD15-aquantia-P620/refs/heads/main/install_aq_universal-9.9.sh
+
+chmod +x install_aq_universal-9.9.sh
+
+./install_aq_universal-9.9.sh
+
+
 
 # update at august 5
 
