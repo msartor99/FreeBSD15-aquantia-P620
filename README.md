@@ -4,18 +4,15 @@
 # FreeBSD15-aquantia-P620
 
 
-my little research on FreeBSD 15
 
+# update at 26 november
 
-
-# update at august 5
-
-FreeBSD 15.1 has a new release, 15.1-P2; here is the corrected script that checks the Px version.
+FreeBSD 15.1 has a new release, 15.1-P5; here is the corrected script that checks the Px version.
 
 
 Download the new file and run it.
 
-fetch https://raw.githubusercontent.com/msartor99/FreeBSD15-aquantia-P620/refs/heads/main/install_aq_base.sh
+fetch https://raw.githubusercontent.com/msartor99/FreeBSD15-aquantia-P620/refs/heads/main/install_aq_universal-9.7.sh
 
 chmod +x install_aq_universal-9.7.sh
 
